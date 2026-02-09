@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>領収書管理システム - Google Drive連携</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://apis.google.com/js/api.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;600;700&family=Outfit:wght@600;800&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --primary: #2d5a8c;
+            --secondary: #4a90e2;
+            --accent: #ff6b6b;
+            --success: #51cf66;
+            --warning: #ffd93d;
+            --google: #4285f4;
+            --bg-card: #ffffff;
+            --text-primary: #1a1a1a;
+            --text-secondary: #6c757d;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+        
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 1.5rem 1rem;
+            color: var(--text-primary);
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .header h1 {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 800;
+            font-size: 2.2rem;
+            color: white;
+            text-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            margin-bottom: 0.5rem;
+        }
+        
+        .header p {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.95rem;
+        }
+        
+        .login-card {
+            background: white;
+            border-radius: 20px;
+            padding: 3rem;
+            max-width: 500px;
+            margin: 3rem auto;
+            text-align: center;
+            box-shadow: var(--shadow);
+        }
+        
+        .login-icon {
+            font-size: 4rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .login-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+        
+        .login-description {
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+        
+        .google-signin-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 2rem;
+            background: var(--google);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
+        }
+        
+        .google-signin-btn:hover {
+            background: #3367d6;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(66, 133, 244, 0.4);
+        }
+        
+        .user-bar {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow);
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .user-avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            border: 2px solid var(--google);
+        }
+        
+        .user-details {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .user-name {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .user-email {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+        
+        .signout-btn {
+            padding: 0.6rem 1.2rem;
+            background: #ea4335;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        
+        .main-card {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: var(--shadow);
+            margin-bottom: 1.5rem;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8rem;
+            }
+            .main-card {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 領収書管理システム</h1>
+            <p>Google Drive連携 - 横浜・高知どこからでもアクセス可能</p>
+        </div>
+        
+        <div id="loginSection">
+            <div class="login-card">
+                <div class="login-icon">🔐</div>
+                <div class="login-title">Googleアカウントでログイン</div>
+                <div class="login-description">
+                    Google Driveに接続して、領収書を安全に保存・管理します。<br>
+                    横浜と高知、どこからでも同じデータにアクセスできます。
+                </div>
+                <button class="google-signin-btn" onclick="handleAuthClick()">
+                    <span>🔵</span>
+                    <span>Googleでログイン</span>
+                </button>
+            </div>
+        </div>
+        
+        <div id="appSection" style="display: none;">
+            <div class="user-bar">
+                <div class="user-info">
+                    <img id="userAvatar" class="user-avatar" src="" alt="User">
+                    <div class="user-details">
+                        <div class="user-name" id="userName"></div>
+                        <div class="user-email" id="userEmail"></div>
+                    </div>
+                </div>
+                <button class="signout-btn" onclick="handleSignoutClick()">ログアウト</button>
+            </div>
+            
+            <div class="main-card">
+                <h2>システムが正常に動作しています</h2>
+                <p>Google Driveに接続されました。</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CLIENT_ID = '1050370018587-ippasgl5g23v71j4m17qcg9v3f4u1qam.apps.googleusercontent.com';
+        const API_KEY = '';
+        const DISCOVERY_DOCS = ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'];
+        const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+        
+        function gapiLoad() {
+            gapi.load('client:auth2', initClient);
+        }
+        
+        function initClient() {
+            gapi.client.init({
+                apiKey: API_KEY,
+                clientId: CLIENT_ID,
+                discoveryDocs: DISCOVERY_DOCS,
+                scope: SCOPES
+            }).then(() => {
+                gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
+                updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
+            });
+        }
+        
+        function updateSigninStatus(isSignedIn) {
+            if (isSignedIn) {
+                const user = gapi.auth2.getAuthInstance().currentUser.get();
+                const profile = user.getBasicProfile();
+                
+                document.getElementById('userName').textContent = profile.getName();
+                document.getElementById('userEmail').textContent = profile.getEmail();
+                document.getElementById('userAvatar').src = profile.getImageUrl();
+                
+                document.getElementById('loginSection').style.display = 'none';
+                document.getElementById('appSection').style.display = 'block';
+            } else {
+                document.getElementById('loginSection').style.display = 'block';
+                document.getElementById('appSection').style.display = 'none';
+            }
+        }
+        
+        function handleAuthClick() {
+            gapi.auth2.getAuthInstance().signIn();
+        }
+        
+        function handleSignoutClick() {
+            gapi.auth2.getAuthInstance().signOut();
+        }
+        
+        window.onload = function() {
+            gapiLoad();
+        };
+    </script>
+</body>
+</html>
